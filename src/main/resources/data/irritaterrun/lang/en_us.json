@@ -1,0 +1,9 @@
+{
+	"gameType.irritaterrun.irritater_run": "Irritater Run",
+	"text.irritaterrun.armor": "Irritater Armor",
+	"text.irritaterrun.eliminated": "%s has been eliminated!",
+	"text.irritaterrun.eliminated.destroyed": "%s has been eliminated by the irritater!",
+	"text.irritaterrun.eliminated.out_of_bounds": "%s has been eliminated by going out of bounds!",
+	"text.irritaterrun.no_winners": "Nobody won the game after %s rounds!",
+	"text.irritaterrun.win": "%s has won the game after %s rounds!"
+}

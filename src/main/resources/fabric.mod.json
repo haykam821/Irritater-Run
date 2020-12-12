@@ -1,0 +1,25 @@
+{
+	"schemaVersion": 1,
+	"id": "irritaterrun",
+	"version": "${version}",
+	"name": "Irritater Run",
+	"description": "A cover-finding minigame for Minecraft.",
+	"authors": [
+		"haykam821"
+	],
+	"contact": {
+		"homepage": "https://github.com/haykam821/Irritater-Run#readme",
+		"issues": "https://github.com/haykam821/Irritater-Run/issues"
+	},
+	"entrypoints": {
+		"main": [
+			"io.github.haykam821.irritaterrun.Main"
+		]
+	},
+	"license": "MIT",
+	"icon": "assets/irritaterrun/icon.png",
+	"depends": {
+		"fabricloader": ">=0.4.0",
+		"plasmid": ">=0.4.0"
+	}
+}
