@@ -29,6 +29,18 @@ public class PlayerEntry {
 		this.irritatered = irritatered;
 	}
 
+	/**
+	 * Attempts to transfer this entry's {@linkplain PlayerEntry#irritatered} status to another entry.
+	 * @param target the entry to transfer the irritatered status to
+	 */
+	public void attemptTransferTo(PlayerEntry target) {
+		this.setIrritatered(false);
+		this.update();
+
+		target.setIrritatered(true);
+		target.update();
+	}
+
 	public Text getWinningMessage() {
 		return new TranslatableText("text.irritaterrun.win", this.player.getDisplayName(), this.phase.getRounds()).formatted(Formatting.GOLD);
 	}

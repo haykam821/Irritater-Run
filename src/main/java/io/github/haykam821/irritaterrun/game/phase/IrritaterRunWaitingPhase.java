@@ -22,7 +22,7 @@ import xyz.nucleoid.plasmid.game.player.JoinResult;
 import xyz.nucleoid.plasmid.game.rule.GameRule;
 import xyz.nucleoid.plasmid.game.rule.RuleResult;
 
-public class IrritaterRunWaitingPhase {
+public class IrritaterRunWaitingPhase implements PlayerAddListener, PlayerDeathListener, OfferPlayerListener, RequestStartListener {
 	private final GameSpace gameSpace;
 	private final IrritaterRunMap map;
 	private final IrritaterRunConfig config;
@@ -49,10 +49,10 @@ public class IrritaterRunWaitingPhase {
 			game.setRule(GameRule.PVP, RuleResult.DENY);
 
 			// Listeners
-			game.on(PlayerAddListener.EVENT, phase::addPlayer);
-			game.on(PlayerDeathListener.EVENT, phase::onPlayerDeath);
-			game.on(OfferPlayerListener.EVENT, phase::offerPlayer);
-			game.on(RequestStartListener.EVENT, phase::requestStart);
+			game.on(PlayerAddListener.EVENT, phase);
+			game.on(PlayerDeathListener.EVENT, phase);
+			game.on(OfferPlayerListener.EVENT, phase);
+			game.on(RequestStartListener.EVENT, phase);
 		});
 	}
 
@@ -60,11 +60,25 @@ public class IrritaterRunWaitingPhase {
 		return this.gameSpace.getPlayerCount() >= this.config.getPlayerConfig().getMaxPlayers();
 	}
 
-	private JoinResult offerPlayer(ServerPlayerEntity player) {
+	// Listeners
+	@Override
+	public void onAddPlayer(ServerPlayerEntity player) {
+		IrritaterRunActivePhase.spawn(this.gameSpace.getWorld(), this.map, player);
+	}
+
+	@Override
+	public ActionResult onDeath(ServerPlayerEntity player, DamageSource source) {
+		IrritaterRunActivePhase.spawn(this.gameSpace.getWorld(), this.map, player);
+		return ActionResult.FAIL;
+	}
+
+	@Override
+	public JoinResult offerPlayer(ServerPlayerEntity player) {
 		return this.isFull() ? JoinResult.gameFull() : JoinResult.ok();
 	}
 
-	private StartResult requestStart() {
+	@Override
+	public StartResult requestStart() {
 		PlayerConfig playerConfig = this.config.getPlayerConfig();
 		if (this.gameSpace.getPlayerCount() < playerConfig.getMinPlayers()) {
 			return StartResult.NOT_ENOUGH_PLAYERS;
@@ -72,14 +86,5 @@ public class IrritaterRunWaitingPhase {
 
 		IrritaterRunActivePhase.open(this.gameSpace, this.map, this.config);
 		return StartResult.OK;
-	}
-
-	private void addPlayer(ServerPlayerEntity player) {
-		IrritaterRunActivePhase.spawn(this.gameSpace.getWorld(), this.map, player);
-	}
-
-	private ActionResult onPlayerDeath(ServerPlayerEntity player, DamageSource source) {
-		IrritaterRunActivePhase.spawn(this.gameSpace.getWorld(), this.map, player);
-		return ActionResult.FAIL;
 	}
 }
