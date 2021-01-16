@@ -308,6 +308,10 @@ public class IrritaterRunActivePhase implements AttackEntityListener, GameCloseL
 		return this.world;
 	}
 
+	public List<PlayerEntry> getPlayers() {
+		return this.players;
+	}
+
 	public IrritaterArmorSet getArmorSet() {
 		return this.armorSet;
 	}

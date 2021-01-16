@@ -1,6 +1,7 @@
 package io.github.haykam821.irritaterrun.game;
 
 import io.github.haykam821.irritaterrun.game.phase.IrritaterRunActivePhase;
+import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.text.TranslatableText;
@@ -38,11 +39,29 @@ public class PlayerEntry {
 		this.update();
 
 		target.setIrritatered(true);
+		target.sendReceivedMessage();
 		target.update();
 	}
 
 	public Text getWinningMessage() {
 		return new TranslatableText("text.irritaterrun.win", this.player.getDisplayName(), this.phase.getRounds()).formatted(Formatting.GOLD);
+	}
+
+	private Text getReceivedMessage() {
+		Text playerName = this.player.getDisplayName().shallowCopy().formatted(Formatting.RED);
+		return new TranslatableText("text.irritaterrun.received", playerName);
+	}
+
+	private void sendActionBar(Text message) {
+		TitleS2CPacket packet = new TitleS2CPacket(TitleS2CPacket.Action.ACTIONBAR, message);
+		this.player.networkHandler.sendPacket(packet);
+	}
+
+	private void sendReceivedMessage() {
+		Text message = this.getReceivedMessage();
+		for (PlayerEntry player : this.phase.getPlayers()) {
+			player.sendActionBar(message);
+		}
 	}
 
 	public boolean isOutOfBounds() {
