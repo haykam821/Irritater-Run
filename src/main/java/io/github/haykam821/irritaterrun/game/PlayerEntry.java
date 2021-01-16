@@ -33,14 +33,20 @@ public class PlayerEntry {
 	/**
 	 * Attempts to transfer this entry's {@linkplain PlayerEntry#irritatered} status to another entry.
 	 * @param target the entry to transfer the irritatered status to
+	 * @return whether the transfer was successful
 	 */
-	public void attemptTransferTo(PlayerEntry target) {
+	public boolean attemptTransferTo(PlayerEntry target) {
+		// Players that are not irritatered should not be able to transfer the irritater
+		if (!this.irritatered) return false;
+
 		this.setIrritatered(false);
 		this.update();
 
 		target.setIrritatered(true);
 		target.sendReceivedMessage();
 		target.update();
+
+		return true;
 	}
 
 	public Text getWinningMessage() {
