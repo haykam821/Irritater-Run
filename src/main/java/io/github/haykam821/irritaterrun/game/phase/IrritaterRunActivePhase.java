@@ -180,11 +180,13 @@ public class IrritaterRunActivePhase implements AttackEntityListener, GameCloseL
 	@Override
 	public void onRemovePlayer(ServerPlayerEntity player) {
 		PlayerEntry entry = this.getEntryFromPlayer(player);
-		this.eliminate(entry, true);
+		if (entry != null) {
+			this.eliminate(entry, true);
 
-		// Restore irritatered balance
-		if (entry.isIrritatered()) {
-			this.setRandomIrritatered();
+			// Restore irritatered balance
+			if (entry.isIrritatered()) {
+				this.setRandomIrritatered();
+			}
 		}
 	}
 
