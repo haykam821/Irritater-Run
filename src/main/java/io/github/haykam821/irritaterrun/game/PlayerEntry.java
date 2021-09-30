@@ -1,7 +1,6 @@
 package io.github.haykam821.irritaterrun.game;
 
 import io.github.haykam821.irritaterrun.game.phase.IrritaterRunActivePhase;
-import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.text.TranslatableText;
@@ -59,8 +58,7 @@ public class PlayerEntry {
 	}
 
 	private void sendActionBar(Text message) {
-		TitleS2CPacket packet = new TitleS2CPacket(TitleS2CPacket.Action.ACTIONBAR, message);
-		this.player.networkHandler.sendPacket(packet);
+		this.player.sendMessage(message, true);
 	}
 
 	private void sendReceivedMessage() {
@@ -76,20 +74,19 @@ public class PlayerEntry {
 
 	private void updateInventory() {
 		player.currentScreenHandler.sendContentUpdates();
-		player.playerScreenHandler.onContentChanged(player.inventory);
-		player.updateCursorStack();
+		player.playerScreenHandler.onContentChanged(player.getInventory());
 	}
 
 	public void update() {
-		player.setGameMode(GameMode.ADVENTURE);
+		player.changeGameMode(GameMode.ADVENTURE);
 
 		// Inventory
-		player.inventory.clear();
+		player.getInventory().clear();
 		if (this.irritatered) {
-			this.player.inventory.armor.set(3, this.phase.getArmorSet().getHelmet());
-			this.player.inventory.armor.set(2, this.phase.getArmorSet().getChestplate());
-			this.player.inventory.armor.set(1, this.phase.getArmorSet().getLeggings());
-			this.player.inventory.armor.set(0, this.phase.getArmorSet().getBoots());
+			this.player.getInventory().armor.set(3, this.phase.getArmorSet().getHelmet());
+			this.player.getInventory().armor.set(2, this.phase.getArmorSet().getChestplate());
+			this.player.getInventory().armor.set(1, this.phase.getArmorSet().getLeggings());
+			this.player.getInventory().armor.set(0, this.phase.getArmorSet().getBoots());
 		}
 		this.updateInventory();
 	}

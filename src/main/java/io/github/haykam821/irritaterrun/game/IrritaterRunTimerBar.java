@@ -5,8 +5,8 @@ import net.minecraft.entity.boss.BossBar;
 import net.minecraft.text.Text;
 import net.minecraft.text.TranslatableText;
 import net.minecraft.util.Formatting;
-import xyz.nucleoid.plasmid.widget.BossBarWidget;
-import xyz.nucleoid.plasmid.widget.GlobalWidgets;
+import xyz.nucleoid.plasmid.game.common.GlobalWidgets;
+import xyz.nucleoid.plasmid.game.common.widget.BossBarWidget;
 
 public class IrritaterRunTimerBar {
 	private static final Text TITLE = new TranslatableText("gameType.irritaterrun.irritater_run").formatted(Formatting.AQUA);
@@ -19,9 +19,5 @@ public class IrritaterRunTimerBar {
 
 	public void tick(IrritaterRunActivePhase phase) {
 		this.bar.setProgress(phase.getTimerBarPercent());
-	}
-
-	public void remove() {
-		this.bar.close();
 	}
 }

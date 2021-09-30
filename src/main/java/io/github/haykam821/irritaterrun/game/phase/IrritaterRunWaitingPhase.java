@@ -5,86 +5,73 @@ import io.github.haykam821.irritaterrun.game.map.IrritaterRunMap;
 import io.github.haykam821.irritaterrun.game.map.IrritaterRunMapBuilder;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.ActionResult;
 import net.minecraft.world.GameMode;
-import xyz.nucleoid.fantasy.BubbleWorldConfig;
+import xyz.nucleoid.fantasy.RuntimeWorldConfig;
 import xyz.nucleoid.plasmid.game.GameOpenContext;
 import xyz.nucleoid.plasmid.game.GameOpenProcedure;
+import xyz.nucleoid.plasmid.game.GameResult;
 import xyz.nucleoid.plasmid.game.GameSpace;
-import xyz.nucleoid.plasmid.game.GameWaitingLobby;
-import xyz.nucleoid.plasmid.game.StartResult;
-import xyz.nucleoid.plasmid.game.config.PlayerConfig;
-import xyz.nucleoid.plasmid.game.event.OfferPlayerListener;
-import xyz.nucleoid.plasmid.game.event.PlayerAddListener;
-import xyz.nucleoid.plasmid.game.event.PlayerDeathListener;
-import xyz.nucleoid.plasmid.game.event.RequestStartListener;
-import xyz.nucleoid.plasmid.game.player.JoinResult;
-import xyz.nucleoid.plasmid.game.rule.GameRule;
-import xyz.nucleoid.plasmid.game.rule.RuleResult;
+import xyz.nucleoid.plasmid.game.common.GameWaitingLobby;
+import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
+import xyz.nucleoid.plasmid.game.event.GamePlayerEvents;
+import xyz.nucleoid.plasmid.game.player.PlayerOffer;
+import xyz.nucleoid.plasmid.game.player.PlayerOfferResult;
+import xyz.nucleoid.plasmid.game.rule.GameRuleType;
+import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
-public class IrritaterRunWaitingPhase implements PlayerAddListener, PlayerDeathListener, OfferPlayerListener, RequestStartListener {
+public class IrritaterRunWaitingPhase implements PlayerDeathEvent, GamePlayerEvents.Offer, GameActivityEvents.RequestStart {
 	private final GameSpace gameSpace;
+	private final ServerWorld world;
 	private final IrritaterRunMap map;
 	private final IrritaterRunConfig config;
 
-	public IrritaterRunWaitingPhase(GameSpace gameSpace, IrritaterRunMap map, IrritaterRunConfig config) {
+	public IrritaterRunWaitingPhase(GameSpace gameSpace, ServerWorld world, IrritaterRunMap map, IrritaterRunConfig config) {
 		this.gameSpace = gameSpace;
+		this.world = world;
 		this.map = map;
 		this.config = config;
 	}
 
 	public static GameOpenProcedure open(GameOpenContext<IrritaterRunConfig> context) {
-		IrritaterRunMapBuilder mapBuilder = new IrritaterRunMapBuilder(context.getConfig());
+		IrritaterRunMapBuilder mapBuilder = new IrritaterRunMapBuilder(context.config());
 		IrritaterRunMap map = mapBuilder.create();
 
-		BubbleWorldConfig worldConfig = new BubbleWorldConfig()
-			.setGenerator(map.createGenerator(context.getServer()))
-			.setDefaultGameMode(GameMode.ADVENTURE);
+		RuntimeWorldConfig worldConfig = new RuntimeWorldConfig()
+			.setGenerator(map.createGenerator(context.server()));
 
-		return context.createOpenProcedure(worldConfig, game -> {
-			IrritaterRunWaitingPhase phase = new IrritaterRunWaitingPhase(game.getSpace(), map, context.getConfig());
-			GameWaitingLobby.applyTo(game, context.getConfig().getPlayerConfig());
+		return context.openWithWorld(worldConfig, (activity, world) -> {
+			IrritaterRunWaitingPhase phase = new IrritaterRunWaitingPhase(activity.getGameSpace(), world, map, context.config());
+			GameWaitingLobby.addTo(activity, context.config().getPlayerConfig());
 
-			IrritaterRunActivePhase.setRules(game);
-			game.setRule(GameRule.PVP, RuleResult.DENY);
+			IrritaterRunActivePhase.setRules(activity);
+			activity.deny(GameRuleType.PVP);
 
 			// Listeners
-			game.on(PlayerAddListener.EVENT, phase);
-			game.on(PlayerDeathListener.EVENT, phase);
-			game.on(OfferPlayerListener.EVENT, phase);
-			game.on(RequestStartListener.EVENT, phase);
+			activity.listen(PlayerDeathEvent.EVENT, phase);
+			activity.listen(GamePlayerEvents.OFFER, phase);
+			activity.listen(GameActivityEvents.REQUEST_START, phase);
 		});
-	}
-
-	private boolean isFull() {
-		return this.gameSpace.getPlayerCount() >= this.config.getPlayerConfig().getMaxPlayers();
 	}
 
 	// Listeners
 	@Override
-	public void onAddPlayer(ServerPlayerEntity player) {
-		IrritaterRunActivePhase.spawn(this.gameSpace.getWorld(), this.map, player);
-	}
-
-	@Override
 	public ActionResult onDeath(ServerPlayerEntity player, DamageSource source) {
-		IrritaterRunActivePhase.spawn(this.gameSpace.getWorld(), this.map, player);
+		IrritaterRunActivePhase.spawn(this.world, this.map, player);
 		return ActionResult.FAIL;
 	}
 
 	@Override
-	public JoinResult offerPlayer(ServerPlayerEntity player) {
-		return this.isFull() ? JoinResult.gameFull() : JoinResult.ok();
+	public PlayerOfferResult onOfferPlayer(PlayerOffer offer) {
+		return offer.accept(this.world, this.map.getSpawnPos()).and(() -> {
+			offer.player().changeGameMode(GameMode.ADVENTURE);
+		});
 	}
 
 	@Override
-	public StartResult requestStart() {
-		PlayerConfig playerConfig = this.config.getPlayerConfig();
-		if (this.gameSpace.getPlayerCount() < playerConfig.getMinPlayers()) {
-			return StartResult.NOT_ENOUGH_PLAYERS;
-		}
-
-		IrritaterRunActivePhase.open(this.gameSpace, this.map, this.config);
-		return StartResult.OK;
+	public GameResult onRequestStart() {
+		IrritaterRunActivePhase.open(this.gameSpace, this.world, this.map, this.config);
+		return GameResult.ok();
 	}
 }

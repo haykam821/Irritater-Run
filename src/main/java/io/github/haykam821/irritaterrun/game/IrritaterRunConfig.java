@@ -6,7 +6,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.haykam821.irritaterrun.game.map.IrritaterRunMapConfig;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
-import xyz.nucleoid.plasmid.game.config.PlayerConfig;
+import xyz.nucleoid.plasmid.game.common.config.PlayerConfig;
 
 public class IrritaterRunConfig {
 	public static final Codec<IrritaterRunConfig> CODEC = RecordCodecBuilder.create(instance -> {

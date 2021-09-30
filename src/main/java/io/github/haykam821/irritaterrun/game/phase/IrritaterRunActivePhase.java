@@ -11,7 +11,6 @@ import io.github.haykam821.irritaterrun.game.PlayerEntry;
 import io.github.haykam821.irritaterrun.game.map.IrritaterRunMap;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
@@ -22,22 +21,18 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
+import xyz.nucleoid.plasmid.game.GameActivity;
 import xyz.nucleoid.plasmid.game.GameCloseReason;
-import xyz.nucleoid.plasmid.game.GameLogic;
 import xyz.nucleoid.plasmid.game.GameSpace;
-import xyz.nucleoid.plasmid.game.event.AttackEntityListener;
-import xyz.nucleoid.plasmid.game.event.GameCloseListener;
-import xyz.nucleoid.plasmid.game.event.GameOpenListener;
-import xyz.nucleoid.plasmid.game.event.GameTickListener;
-import xyz.nucleoid.plasmid.game.event.PlayerAddListener;
-import xyz.nucleoid.plasmid.game.event.PlayerDamageListener;
-import xyz.nucleoid.plasmid.game.event.PlayerDeathListener;
-import xyz.nucleoid.plasmid.game.event.PlayerRemoveListener;
-import xyz.nucleoid.plasmid.game.rule.GameRule;
-import xyz.nucleoid.plasmid.game.rule.RuleResult;
-import xyz.nucleoid.plasmid.widget.GlobalWidgets;
+import xyz.nucleoid.plasmid.game.common.GlobalWidgets;
+import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
+import xyz.nucleoid.plasmid.game.event.GamePlayerEvents;
+import xyz.nucleoid.plasmid.game.rule.GameRuleType;
+import xyz.nucleoid.stimuli.event.player.PlayerAttackEntityEvent;
+import xyz.nucleoid.stimuli.event.player.PlayerDamageEvent;
+import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
-public class IrritaterRunActivePhase implements AttackEntityListener, GameCloseListener, GameOpenListener, GameTickListener, PlayerAddListener, PlayerDamageListener, PlayerDeathListener, PlayerRemoveListener {
+public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Enable, GameActivityEvents.Tick, GamePlayerEvents.Add, PlayerDamageEvent, PlayerDeathEvent, GamePlayerEvents.Remove {
 	private final ServerWorld world;
 	private final GameSpace gameSpace;
 	private final IrritaterRunMap map;
@@ -51,8 +46,8 @@ public class IrritaterRunActivePhase implements AttackEntityListener, GameCloseL
 	private int ticksUntilSwitch = 20 * 4;
 	private boolean irritaterRound = false;
 
-	public IrritaterRunActivePhase(GameSpace gameSpace, IrritaterRunMap map, IrritaterRunConfig config, GlobalWidgets widgets) {
-		this.world = gameSpace.getWorld();
+	public IrritaterRunActivePhase(GameSpace gameSpace, ServerWorld world, IrritaterRunMap map, IrritaterRunConfig config, GlobalWidgets widgets) {
+		this.world = world;
 		this.gameSpace = gameSpace;
 		this.map = map;
 		this.config = config;
@@ -63,32 +58,31 @@ public class IrritaterRunActivePhase implements AttackEntityListener, GameCloseL
 		this.armorSet = new IrritaterArmorSet(config.getArmorColor());
 	}
 
-	public static void setRules(GameLogic game) {
-		game.setRule(GameRule.BLOCK_DROPS, RuleResult.DENY);
-		game.setRule(GameRule.CRAFTING, RuleResult.DENY);
-		game.setRule(GameRule.FALL_DAMAGE, RuleResult.DENY);
-		game.setRule(GameRule.HUNGER, RuleResult.DENY);
-		game.setRule(GameRule.INTERACTION, RuleResult.DENY);
-		game.setRule(GameRule.PORTALS, RuleResult.DENY);
-		game.setRule(GameRule.PVP, RuleResult.ALLOW);
+	public static void setRules(GameActivity activity) {
+		activity.deny(GameRuleType.BLOCK_DROPS);
+		activity.deny(GameRuleType.CRAFTING);
+		activity.deny(GameRuleType.FALL_DAMAGE);
+		activity.deny(GameRuleType.HUNGER);
+		activity.deny(GameRuleType.INTERACTION);
+		activity.deny(GameRuleType.PORTALS);
+		activity.allow(GameRuleType.PVP);
 	}
 
-	public static void open(GameSpace gameSpace, IrritaterRunMap map, IrritaterRunConfig config) {
-		gameSpace.openGame(game -> {
-			GlobalWidgets widgets = new GlobalWidgets(game);
-			IrritaterRunActivePhase phase = new IrritaterRunActivePhase(gameSpace, map, config, widgets);
+	public static void open(GameSpace gameSpace, ServerWorld world, IrritaterRunMap map, IrritaterRunConfig config) {
+		gameSpace.setActivity(activity -> {
+			GlobalWidgets widgets = GlobalWidgets.addTo(activity);
+			IrritaterRunActivePhase phase = new IrritaterRunActivePhase(gameSpace, world, map, config, widgets);
 
-			IrritaterRunActivePhase.setRules(game);
+			IrritaterRunActivePhase.setRules(activity);
 
 			// Listeners
-			game.on(AttackEntityListener.EVENT, phase);
-			game.on(GameCloseListener.EVENT, phase);
-			game.on(GameOpenListener.EVENT, phase);
-			game.on(GameTickListener.EVENT, phase);
-			game.on(PlayerAddListener.EVENT, phase);
-			game.on(PlayerDamageListener.EVENT, phase);
-			game.on(PlayerDeathListener.EVENT, phase);
-			game.on(PlayerRemoveListener.EVENT, phase);
+			activity.listen(PlayerAttackEntityEvent.EVENT, phase);
+			activity.listen(GameActivityEvents.ENABLE, phase);
+			activity.listen(GameActivityEvents.TICK, phase);
+			activity.listen(GamePlayerEvents.ADD, phase);
+			activity.listen(PlayerDamageEvent.EVENT, phase);
+			activity.listen(PlayerDeathEvent.EVENT, phase);
+			activity.listen(GamePlayerEvents.REMOVE, phase);
 		});
 	}
 
@@ -108,12 +102,7 @@ public class IrritaterRunActivePhase implements AttackEntityListener, GameCloseL
 	}
 
 	@Override
-	public void onClose() {
-		this.timerBar.remove();
-	}
-
-	@Override
-	public void onOpen() {
+	public void onEnable() {
 		this.opened = true;
 		this.singleplayer = this.players.size() == 1;
 
@@ -205,7 +194,7 @@ public class IrritaterRunActivePhase implements AttackEntityListener, GameCloseL
 	 * Ends an irritatered round by removing players that are irritatered.
 	 */
 	private void endIrritateredRound() {
-		this.gameSpace.getPlayers().sendSound(this.config.getDestroySound());
+		this.gameSpace.getPlayers().playSound(this.config.getDestroySound());
 		this.ticksUntilSwitch = 20 * 4;
 
 		Iterator<PlayerEntry> irritateredIterator = this.players.iterator();
@@ -267,8 +256,8 @@ public class IrritaterRunActivePhase implements AttackEntityListener, GameCloseL
 		return new TranslatableText("text.irritaterrun.no_winners", this.rounds).formatted(Formatting.GOLD);
 	}
 
-	private void setSpectator(PlayerEntity player) {
-		player.setGameMode(GameMode.SPECTATOR);
+	private void setSpectator(ServerPlayerEntity player) {
+		player.changeGameMode(GameMode.SPECTATOR);
 	}
 
 	private PlayerEntry getEntryFromPlayer(ServerPlayerEntity player) {
@@ -319,7 +308,7 @@ public class IrritaterRunActivePhase implements AttackEntityListener, GameCloseL
 	}
 
 	public static void spawn(ServerWorld world, IrritaterRunMap map, ServerPlayerEntity player) {
-		Vec3d center = map.getInnerBox().getCenter();
-		player.teleport(world, center.getX(), map.getPlatform().getMin().getY() + 1, center.getZ(), 0, 0);
+		Vec3d spawnPos = map.getSpawnPos();
+		player.teleport(world, spawnPos.getX(), spawnPos.getY(), spawnPos.getZ(), 0, 0);
 	}
 }

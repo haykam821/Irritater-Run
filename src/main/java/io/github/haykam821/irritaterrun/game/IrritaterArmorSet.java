@@ -39,7 +39,7 @@ public final class IrritaterArmorSet {
 			.addEnchantment(Enchantments.BINDING_CURSE, 1)
 			.setUnbreakable()
 			.setName(NAME)
-			.setColor(color)
+			.setDyeColor(color)
 			.build();
 	}
 }

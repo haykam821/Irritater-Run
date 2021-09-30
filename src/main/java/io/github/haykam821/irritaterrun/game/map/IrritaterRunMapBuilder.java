@@ -6,8 +6,8 @@ import io.github.haykam821.irritaterrun.game.IrritaterRunConfig;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.util.math.BlockPos;
-import xyz.nucleoid.plasmid.map.template.MapTemplate;
-import xyz.nucleoid.plasmid.util.BlockBounds;
+import xyz.nucleoid.map_templates.BlockBounds;
+import xyz.nucleoid.map_templates.MapTemplate;
 
 public class IrritaterRunMapBuilder {
 	private static final BlockState FLOOR = Blocks.SMOOTH_SANDSTONE.getDefaultState();
@@ -25,15 +25,15 @@ public class IrritaterRunMapBuilder {
 		MapTemplate template = MapTemplate.createEmpty();
 		IrritaterRunMapConfig mapConfig = this.config.getMapConfig();
 
-		BlockBounds bounds = new BlockBounds(BlockPos.ORIGIN, new BlockPos(mapConfig.getX() + 1, 4, mapConfig.getZ() + 1));
+		BlockBounds bounds = BlockBounds.of(BlockPos.ORIGIN, new BlockPos(mapConfig.getX() + 1, 4, mapConfig.getZ() + 1));
 		this.build(bounds, template, mapConfig);
 
 		return new IrritaterRunMap(template, bounds);
 	}
 
 	private BlockState getBlockState(BlockPos pos, BlockBounds bounds, IrritaterRunMapConfig mapConfig) {
-		int layer = pos.getY() - bounds.getMin().getY();
-		boolean outline = pos.getX() == bounds.getMin().getX() || pos.getX() == bounds.getMax().getX() || pos.getZ() == bounds.getMin().getZ() || pos.getZ() == bounds.getMax().getZ();
+		int layer = pos.getY() - bounds.min().getY();
+		boolean outline = pos.getX() == bounds.min().getX() || pos.getX() == bounds.max().getX() || pos.getZ() == bounds.min().getZ() || pos.getZ() == bounds.max().getZ();
 
 		if (outline) {
 			if (layer == 0) {
