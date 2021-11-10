@@ -27,12 +27,14 @@ import xyz.nucleoid.plasmid.game.GameSpace;
 import xyz.nucleoid.plasmid.game.common.GlobalWidgets;
 import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
 import xyz.nucleoid.plasmid.game.event.GamePlayerEvents;
+import xyz.nucleoid.plasmid.game.player.PlayerOffer;
+import xyz.nucleoid.plasmid.game.player.PlayerOfferResult;
 import xyz.nucleoid.plasmid.game.rule.GameRuleType;
 import xyz.nucleoid.stimuli.event.player.PlayerAttackEntityEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDamageEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
-public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Enable, GameActivityEvents.Tick, GamePlayerEvents.Add, PlayerDamageEvent, PlayerDeathEvent, GamePlayerEvents.Remove {
+public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Enable, GameActivityEvents.Tick, GamePlayerEvents.Offer, PlayerDamageEvent, PlayerDeathEvent, GamePlayerEvents.Remove {
 	private final ServerWorld world;
 	private final GameSpace gameSpace;
 	private final IrritaterRunMap map;
@@ -41,7 +43,6 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 	private final IrritaterRunTimerBar timerBar;
 	private final IrritaterArmorSet armorSet;
 	private boolean singleplayer = false;
-	private boolean opened = false;
 	private int rounds = 0;
 	private int ticksUntilSwitch = 20 * 4;
 	private boolean irritaterRound = false;
@@ -79,7 +80,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 			activity.listen(PlayerAttackEntityEvent.EVENT, phase);
 			activity.listen(GameActivityEvents.ENABLE, phase);
 			activity.listen(GameActivityEvents.TICK, phase);
-			activity.listen(GamePlayerEvents.ADD, phase);
+			activity.listen(GamePlayerEvents.OFFER, phase);
 			activity.listen(PlayerDamageEvent.EVENT, phase);
 			activity.listen(PlayerDeathEvent.EVENT, phase);
 			activity.listen(GamePlayerEvents.REMOVE, phase);
@@ -103,7 +104,6 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 
 	@Override
 	public void onEnable() {
-		this.opened = true;
 		this.singleplayer = this.players.size() == 1;
 
  		for (PlayerEntry entry : this.players) {
@@ -140,13 +140,10 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 	}
 
 	@Override
-	public void onAddPlayer(ServerPlayerEntity player) {
-		PlayerEntry entry = this.getEntryFromPlayer(player);
-		if (entry == null || !this.players.contains(entry)) {
-			this.setSpectator(player);
-		} else if (this.opened) {
-			this.eliminate(entry, true);
-		}
+	public PlayerOfferResult onOfferPlayer(PlayerOffer offer) {
+		return offer.accept(this.world, this.map.getSpawnPos()).and(() -> {
+			this.setSpectator(offer.player());
+		});
 	}
 
 	@Override
