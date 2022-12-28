@@ -5,12 +5,11 @@ import net.minecraft.item.ItemConvertible;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.text.Text;
-import net.minecraft.text.TranslatableText;
 import net.minecraft.util.Formatting;
 import xyz.nucleoid.plasmid.util.ItemStackBuilder;
 
 public final class IrritaterArmorSet {
-	private static final Text NAME = new TranslatableText("text.irritaterrun.armor").formatted(Formatting.RED);
+	private static final Text NAME = Text.translatable("text.irritaterrun.armor").formatted(Formatting.RED);
 
 	private final int color;
 
