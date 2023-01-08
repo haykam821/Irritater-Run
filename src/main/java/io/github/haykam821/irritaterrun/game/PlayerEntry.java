@@ -3,7 +3,6 @@ package io.github.haykam821.irritaterrun.game;
 import io.github.haykam821.irritaterrun.game.phase.IrritaterRunActivePhase;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
-import net.minecraft.text.TranslatableText;
 import net.minecraft.util.Formatting;
 import net.minecraft.world.GameMode;
 
@@ -49,12 +48,12 @@ public class PlayerEntry {
 	}
 
 	public Text getWinningMessage() {
-		return new TranslatableText("text.irritaterrun.win", this.player.getDisplayName(), this.phase.getRounds()).formatted(Formatting.GOLD);
+		return Text.translatable("text.irritaterrun.win", this.player.getDisplayName(), this.phase.getRounds()).formatted(Formatting.GOLD);
 	}
 
 	private Text getReceivedMessage() {
-		Text playerName = this.player.getDisplayName().shallowCopy().formatted(Formatting.RED);
-		return new TranslatableText("text.irritaterrun.received", playerName);
+		Text playerName = this.player.getDisplayName().copy().formatted(Formatting.RED);
+		return Text.translatable("text.irritaterrun.received", playerName);
 	}
 
 	private void sendActionBar(Text message) {

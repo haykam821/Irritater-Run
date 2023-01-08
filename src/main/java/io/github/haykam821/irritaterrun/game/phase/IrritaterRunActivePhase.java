@@ -14,7 +14,6 @@ import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
-import net.minecraft.text.TranslatableText;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
@@ -250,7 +249,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 		if (this.players.size() == 1) {
 			return this.players.iterator().next().getWinningMessage();
 		}
-		return new TranslatableText("text.irritaterrun.no_winners", this.rounds).formatted(Formatting.GOLD);
+		return Text.translatable("text.irritaterrun.no_winners", this.rounds).formatted(Formatting.GOLD);
 	}
 
 	private void setSpectator(ServerPlayerEntity player) {
@@ -267,7 +266,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 	}
 
 	private void eliminate(PlayerEntry entry, String suffix, boolean remove) {
-		Text message = new TranslatableText("text.irritaterrun.eliminated" + suffix, entry.getPlayer().getDisplayName()).formatted(Formatting.RED);
+		Text message = Text.translatable("text.irritaterrun.eliminated" + suffix, entry.getPlayer().getDisplayName()).formatted(Formatting.RED);
 		this.gameSpace.getPlayers().sendMessage(message);
 
 		if (remove) {
