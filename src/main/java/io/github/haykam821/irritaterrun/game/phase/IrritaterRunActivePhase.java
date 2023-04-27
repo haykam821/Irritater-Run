@@ -44,6 +44,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 	private boolean singleplayer = false;
 	private int rounds = 0;
 	private int ticksUntilSwitch = 20 * 4;
+	private int ticksUntilClose = -1;
 	private boolean irritaterRound = false;
 
 	public IrritaterRunActivePhase(GameSpace gameSpace, ServerWorld world, IrritaterRunMap map, IrritaterRunConfig config, GlobalWidgets widgets) {
@@ -89,7 +90,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 	// Listeners
 	@Override
 	public ActionResult onAttackEntity(ServerPlayerEntity attacker, Hand hand, Entity attacked, EntityHitResult hitResult) {
-		if (attacked instanceof ServerPlayerEntity) {
+		if (!this.isGameEnding() && attacked instanceof ServerPlayerEntity) {
 			PlayerEntry attackedEntry = this.getEntryFromPlayer((ServerPlayerEntity) attacked);
 			if (attackedEntry != null) {
 				PlayerEntry attackerEntry = this.getEntryFromPlayer(attacker);
@@ -112,6 +113,16 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 
 	@Override
 	public void onTick() {
+		// Decrease ticks until game end to zero
+		if (this.isGameEnding()) {
+			if (this.ticksUntilClose == 0) {
+				this.gameSpace.close(GameCloseReason.FINISHED);
+			}
+
+			this.ticksUntilClose -= 1;
+			return;
+		}
+
 		this.ticksUntilSwitch -= 1;
 		this.timerBar.tick(this);
 		if (this.ticksUntilSwitch < 0) {
@@ -153,7 +164,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 	@Override
 	public ActionResult onDeath(ServerPlayerEntity player, DamageSource source) {
 		PlayerEntry entry = this.getEntryFromPlayer(player);
-		if (entry == null) {
+		if (entry == null || this.isGameEnding()) {
 			IrritaterRunActivePhase.spawn(this.world, this.map, player);
 		} else {
 			this.eliminate(entry, true);
@@ -165,7 +176,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 	@Override
 	public void onRemovePlayer(ServerPlayerEntity player) {
 		PlayerEntry entry = this.getEntryFromPlayer(player);
-		if (entry != null) {
+		if (entry != null && !this.isGameEnding()) {
 			this.eliminate(entry, true);
 
 			// Restore irritatered balance
@@ -204,7 +215,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 	}
 
 	/**
-	 * Attempts to determine a winner and closes the game space if one is found.
+	 * Attempts to determine a winner and starts game closure if one is found.
 	 */
 	private void checkForWin() {
 		if (this.players.size() < 2) {
@@ -215,7 +226,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 				player.sendMessage(endingMessage, false);
 			}
 
-			this.gameSpace.close(GameCloseReason.FINISHED);
+			this.ticksUntilClose = this.config.getTicksUntilClose().get(this.world.getRandom());
 		}
 	}
 
@@ -243,6 +254,10 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 			entry.setIrritatered(true);
 			entry.update();
 		}
+	}
+
+	private boolean isGameEnding() {
+		return this.ticksUntilClose >= 0;
 	}
 
 	private Text getEndingMessage() {
