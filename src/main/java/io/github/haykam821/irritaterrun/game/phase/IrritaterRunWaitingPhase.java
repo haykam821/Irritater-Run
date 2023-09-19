@@ -58,7 +58,7 @@ public class IrritaterRunWaitingPhase implements PlayerDeathEvent, GamePlayerEve
 	// Listeners
 	@Override
 	public ActionResult onDeath(ServerPlayerEntity player, DamageSource source) {
-		IrritaterRunActivePhase.spawn(this.world, this.map, player);
+		IrritaterRunActivePhase.spawnAtCenter(this.world, this.map, player);
 		return ActionResult.FAIL;
 	}
 

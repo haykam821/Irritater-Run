@@ -89,9 +89,4 @@ public class PlayerEntry {
 		}
 		this.updateInventory();
 	}
-
-	public void spawn() {
-		this.update();
-		IrritaterRunActivePhase.spawn(this.phase.getWorld(), this.phase.getMap(), player);
-	}
 }

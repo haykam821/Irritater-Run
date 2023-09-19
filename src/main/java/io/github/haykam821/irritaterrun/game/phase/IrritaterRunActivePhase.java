@@ -12,6 +12,7 @@ import io.github.haykam821.irritaterrun.game.IrritaterRunConfig;
 import io.github.haykam821.irritaterrun.game.IrritaterRunTimerBar;
 import io.github.haykam821.irritaterrun.game.PlayerEntry;
 import io.github.haykam821.irritaterrun.game.map.IrritaterRunMap;
+import io.github.haykam821.irritaterrun.game.map.IrritaterRunMapConfig;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -21,6 +22,7 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import xyz.nucleoid.plasmid.game.GameActivity;
@@ -108,10 +110,27 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 
 	@Override
 	public void onEnable() {
+		int index = 0;
 		this.singleplayer = this.players.size() == 1;
 
- 		for (PlayerEntry entry : this.players) {
-			entry.spawn();
+		IrritaterRunMapConfig mapConfig = this.config.getMapConfig();
+		int spawnRadius = (Math.min(mapConfig.getX(), mapConfig.getZ()) - 4) / 2;
+
+		Vec3d center = this.map.getSpawnPos();
+
+		for (PlayerEntry entry : this.players) {
+			entry.update();
+
+			double theta = ((double) index / this.players.size()) * 2 * Math.PI;
+			float yaw = (float) theta * MathHelper.DEGREES_PER_RADIAN + 90;
+
+			double x = center.getX() + Math.cos(theta) * spawnRadius;
+			double z = center.getZ() + Math.sin(theta) * spawnRadius;
+
+			Vec3d spawnPos = new Vec3d(x, center.getY(), z);
+			IrritaterRunActivePhase.spawn(this.world, spawnPos, yaw, entry.getPlayer());
+
+			index += 1;
 		}
 	}
 
@@ -187,7 +206,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 	public ActionResult onDeath(ServerPlayerEntity player, DamageSource source) {
 		PlayerEntry entry = this.getEntryFromPlayer(player);
 		if (entry == null || this.isGameEnding()) {
-			IrritaterRunActivePhase.spawn(this.world, this.map, player);
+			IrritaterRunActivePhase.spawnAtCenter(this.world, this.map, player);
 		} else {
 			this.eliminate(entry, true);
 			this.setRandomIrritatered();
@@ -355,8 +374,11 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 		return this.armorSet;
 	}
 
-	public static void spawn(ServerWorld world, IrritaterRunMap map, ServerPlayerEntity player) {
-		Vec3d spawnPos = map.getSpawnPos();
-		player.teleport(world, spawnPos.getX(), spawnPos.getY(), spawnPos.getZ(), 0, 0);
+	public static void spawn(ServerWorld world, Vec3d pos, float yaw, ServerPlayerEntity player) {
+		player.teleport(world, pos.getX(), pos.getY(), pos.getZ(), yaw, 0);
+	}
+
+	public static void spawnAtCenter(ServerWorld world, IrritaterRunMap map, ServerPlayerEntity player) {
+		IrritaterRunActivePhase.spawn(world, map.getSpawnPos(), 0, player);
 	}
 }
