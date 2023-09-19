@@ -4,6 +4,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import io.github.haykam821.irritaterrun.entity.IrritaterCatchEntityEvent;
+import io.github.haykam821.irritaterrun.entity.IrritaterEntity;
+import io.github.haykam821.irritaterrun.entity.IrritaterRunEntityTypes;
 import io.github.haykam821.irritaterrun.game.IrritaterArmorSet;
 import io.github.haykam821.irritaterrun.game.IrritaterRunConfig;
 import io.github.haykam821.irritaterrun.game.IrritaterRunTimerBar;
@@ -33,7 +36,7 @@ import xyz.nucleoid.stimuli.event.player.PlayerAttackEntityEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDamageEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
-public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Enable, GameActivityEvents.Tick, GamePlayerEvents.Offer, PlayerDamageEvent, PlayerDeathEvent, GamePlayerEvents.Remove {
+public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Enable, GameActivityEvents.Tick, IrritaterCatchEntityEvent, GamePlayerEvents.Offer, PlayerDamageEvent, PlayerDeathEvent, GamePlayerEvents.Remove {
 	private final ServerWorld world;
 	private final GameSpace gameSpace;
 	private final IrritaterRunMap map;
@@ -45,7 +48,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 	private int rounds = 0;
 	private int ticksUntilSwitch = 20 * 4;
 	private int ticksUntilClose = -1;
-	private boolean irritaterRound = false;
+	private RoundState roundState = RoundState.BREAK;
 
 	public IrritaterRunActivePhase(GameSpace gameSpace, ServerWorld world, IrritaterRunMap map, IrritaterRunConfig config, GlobalWidgets widgets) {
 		this.world = world;
@@ -80,6 +83,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 			activity.listen(PlayerAttackEntityEvent.EVENT, phase);
 			activity.listen(GameActivityEvents.ENABLE, phase);
 			activity.listen(GameActivityEvents.TICK, phase);
+			activity.listen(IrritaterCatchEntityEvent.EVENT, phase);
 			activity.listen(GamePlayerEvents.OFFER, phase);
 			activity.listen(PlayerDamageEvent.EVENT, phase);
 			activity.listen(PlayerDeathEvent.EVENT, phase);
@@ -123,15 +127,17 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 			return;
 		}
 
-		this.ticksUntilSwitch -= 1;
+		if (this.roundState != RoundState.IRRITATER_CATCHING) {
+			this.ticksUntilSwitch -= 1;
+		}
+
 		this.timerBar.tick(this);
 		if (this.ticksUntilSwitch < 0) {
-			if (this.irritaterRound) {
+			if (this.roundState == RoundState.IRRITATER) {
 				this.endIrritateredRound();
 			} else {
 				this.startIrritateredRound();
 			}
-			this.irritaterRound = !this.irritaterRound;
 
 			this.updateAll();
 		}
@@ -147,6 +153,22 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 		}
 
 		this.checkForWin();
+	}
+
+	@Override
+	public ActionResult onIrritaterCatchEntity(IrritaterEntity irritater, Entity target) {
+		if (!this.isGameEnding() && target instanceof ServerPlayerEntity player) {
+			PlayerEntry entry = this.getEntryFromPlayer(player);
+
+			if (entry != null) {
+				entry.setIrritatered(true);
+				entry.update();
+
+				this.roundState = RoundState.IRRITATER;
+			}
+		}
+
+		return ActionResult.PASS;
 	}
 
 	@Override
@@ -194,7 +216,20 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 		this.rounds += 1;
 		this.ticksUntilSwitch = this.getRoundTicks();
 
-		this.setRandomIrritatered();
+		IrritaterEntity entity = new IrritaterEntity(IrritaterRunEntityTypes.IRRITATER, world);
+
+		Vec3d spawnPos = map.getSpawnPos();
+		entity.setPos(spawnPos.getX(), spawnPos.getY(), spawnPos.getZ());
+
+		PlayerEntry entry = this.getRandomPlayer();
+
+		if (entry != null) {
+			entity.setTarget(entry.getPlayer());
+		}
+
+		world.spawnEntity(entity);
+
+		this.roundState = RoundState.IRRITATER_CATCHING;
 	}
 
 	/**
@@ -212,6 +247,8 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 				irritateredIterator.remove();
 			}
 		}
+
+		this.roundState = RoundState.BREAK;
 	}
 
 	/**
