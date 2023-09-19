@@ -103,7 +103,7 @@ public class IrritaterEntity extends Entity implements PolymerEntity {
 
 		this.refreshPositionAndAngles(this.getX() + x, this.getY(), this.getZ() + z, yaw, 0);
 
-		float rotationY = (float) -theta + MathHelper.PI / 2;
+		float rotationY = (float) -theta - MathHelper.PI / 2;
 		this.head.setLeftRotation(new Quaternionf().rotateY(rotationY));
 
 		this.interaction.setYaw(yaw);
