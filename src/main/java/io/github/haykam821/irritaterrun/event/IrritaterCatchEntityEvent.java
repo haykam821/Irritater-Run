@@ -1,5 +1,6 @@
-package io.github.haykam821.irritaterrun.entity;
+package io.github.haykam821.irritaterrun.event;
 
+import io.github.haykam821.irritaterrun.entity.IrritaterEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.ActionResult;
 import xyz.nucleoid.stimuli.event.StimulusEvent;

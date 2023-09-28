@@ -4,9 +4,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import io.github.haykam821.irritaterrun.entity.IrritaterCatchEntityEvent;
 import io.github.haykam821.irritaterrun.entity.IrritaterEntity;
 import io.github.haykam821.irritaterrun.entity.IrritaterRunEntityTypes;
+import io.github.haykam821.irritaterrun.event.IrritaterCatchEntityEvent;
+import io.github.haykam821.irritaterrun.event.IrritaterSelectTargetEvent;
 import io.github.haykam821.irritaterrun.game.IrritaterArmorSet;
 import io.github.haykam821.irritaterrun.game.IrritaterRunConfig;
 import io.github.haykam821.irritaterrun.game.IrritaterRunTimerBar;
@@ -38,7 +39,7 @@ import xyz.nucleoid.stimuli.event.player.PlayerAttackEntityEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDamageEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
-public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Enable, GameActivityEvents.Tick, IrritaterCatchEntityEvent, GamePlayerEvents.Offer, PlayerDamageEvent, PlayerDeathEvent, GamePlayerEvents.Remove {
+public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Enable, GameActivityEvents.Tick, IrritaterCatchEntityEvent, IrritaterSelectTargetEvent, GamePlayerEvents.Offer, PlayerDamageEvent, PlayerDeathEvent, GamePlayerEvents.Remove {
 	private final ServerWorld world;
 	private final GameSpace gameSpace;
 	private final IrritaterRunMap map;
@@ -86,6 +87,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 			activity.listen(GameActivityEvents.ENABLE, phase);
 			activity.listen(GameActivityEvents.TICK, phase);
 			activity.listen(IrritaterCatchEntityEvent.EVENT, phase);
+			activity.listen(IrritaterSelectTargetEvent.EVENT, phase);
 			activity.listen(GamePlayerEvents.OFFER, phase);
 			activity.listen(PlayerDamageEvent.EVENT, phase);
 			activity.listen(PlayerDeathEvent.EVENT, phase);
@@ -188,6 +190,12 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 		}
 
 		return ActionResult.PASS;
+	}
+
+	@Override
+	public Entity onIrritaterSelectTarget(IrritaterEntity irritater) {
+		PlayerEntry entry = this.getRandomPlayer();
+		return entry == null ? null : entry.getPlayer();
 	}
 
 	@Override

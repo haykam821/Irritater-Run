@@ -17,7 +17,10 @@ import eu.pb4.polymer.virtualentity.api.elements.InteractionElement;
 import eu.pb4.polymer.virtualentity.api.elements.ItemDisplayElement;
 import eu.pb4.polymer.virtualentity.api.elements.MobAnchorElement;
 import eu.pb4.polymer.virtualentity.api.tracker.EntityTrackedData;
+import io.github.haykam821.irritaterrun.event.IrritaterCatchEntityEvent;
+import io.github.haykam821.irritaterrun.event.IrritaterSelectTargetEvent;
 import it.unimi.dsi.fastutil.ints.IntList;
+import net.minecraft.SharedConstants;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.data.DataTracker;
@@ -37,8 +40,12 @@ import xyz.nucleoid.stimuli.Stimuli;
 
 public class IrritaterEntity extends Entity implements PolymerEntity {
 	private static final String TARGET_KEY = "target";
+	private static final String LOST_TICKS_KEY = "lost_ticks";
 
 	private static final double MOVEMENT_SPEED = 0.8;
+
+	private static final int SELECT_NEW_TARGET_TICKS = SharedConstants.TICKS_PER_SECOND * 3;
+	private static final float LOST_ROTATION_SPEED = 0.8f;
 
 	private static final float HEAD_OFFSET_Y = 30 / 16f;
 	private static final Vector3fc HEAD_OFFSET = new Vector3f(0, HEAD_OFFSET_Y, 0);
@@ -55,6 +62,8 @@ public class IrritaterEntity extends Entity implements PolymerEntity {
 
 	private Entity target;
 	private UUID targetUuid;
+
+	private int lostTicks;
 
 	public IrritaterEntity(EntityType<? extends IrritaterEntity> type, World world) {
 		super(type, world);
@@ -93,6 +102,17 @@ public class IrritaterEntity extends Entity implements PolymerEntity {
 		this.updateTargetTracking(target, false);
 	}
 
+	private void updateYaw() {
+		float rotationY = (this.getYaw() + 180) * -MathHelper.RADIANS_PER_DEGREE;
+		this.head.setLeftRotation(new Quaternionf().rotateY(rotationY));
+
+		this.interaction.setYaw(this.getYaw());
+
+		if (this.getYaw() != this.prevYaw) {
+			this.head.startInterpolation();
+		}
+	}
+
 	public void updateTargetTracking(Entity target, boolean move) {
 		double theta = MathHelper.atan2(target.getZ() - this.getZ(), target.getX() - this.getX());
 
@@ -102,11 +122,7 @@ public class IrritaterEntity extends Entity implements PolymerEntity {
 		float yaw = (float) (MathHelper.DEGREES_PER_RADIAN * theta) - 90;
 
 		this.refreshPositionAndAngles(this.getX() + x, this.getY(), this.getZ() + z, yaw, 0);
-
-		float rotationY = (float) -theta - MathHelper.PI / 2;
-		this.head.setLeftRotation(new Quaternionf().rotateY(rotationY));
-
-		this.interaction.setYaw(yaw);
+		this.updateYaw();
 
 		if (move) {
 			this.head.startInterpolation();
@@ -133,7 +149,24 @@ public class IrritaterEntity extends Entity implements PolymerEntity {
 
 		Entity target = this.getTarget();
 
-		if (target != null) {
+		if (target == null) {
+			this.setYaw(this.getYaw() + LOST_ROTATION_SPEED);
+			this.updateYaw();
+
+			if (this.lostTicks > SELECT_NEW_TARGET_TICKS) {
+				try (EventInvokers invokers = Stimuli.select().forEntity(this)) {
+					Entity newTarget = invokers.get(IrritaterSelectTargetEvent.EVENT).onIrritaterSelectTarget(this);
+
+					if (newTarget != null) {
+						this.setTarget(newTarget);
+					}
+				}
+			} else {
+				this.lostTicks += 1;
+			}
+		} else {
+			this.lostTicks = 0;
+
 			if (this.getBoundingBox().intersects(target.getBoundingBox())) {
 				try (EventInvokers invokers = Stimuli.select().forEntity(this)) {
 					ActionResult result = invokers.get(IrritaterCatchEntityEvent.EVENT).onIrritaterCatchEntity(this, target);
@@ -163,17 +196,21 @@ public class IrritaterEntity extends Entity implements PolymerEntity {
 
 	@Override
 	protected void readCustomDataFromNbt(NbtCompound nbt) {
-		if (this.targetUuid != null) {
-			nbt.putUuid(TARGET_KEY, this.targetUuid);
-		}
-	}
-
-	@Override
-	protected void writeCustomDataToNbt(NbtCompound nbt) {
 		if (nbt.containsUuid(TARGET_KEY)) {
 			this.target = null;
 			this.targetUuid = nbt.getUuid(TARGET_KEY);
 		}
+
+		this.lostTicks = nbt.getInt(LOST_TICKS_KEY);
+	}
+
+	@Override
+	protected void writeCustomDataToNbt(NbtCompound nbt) {
+		if (this.targetUuid != null) {
+			nbt.putUuid(TARGET_KEY, this.targetUuid);
+		}
+
+		nbt.putInt(LOST_TICKS_KEY, this.lostTicks);
 	}
 
 	@Override
