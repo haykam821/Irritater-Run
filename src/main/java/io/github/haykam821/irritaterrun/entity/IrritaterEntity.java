@@ -23,6 +23,7 @@ import it.unimi.dsi.fastutil.ints.IntList;
 import net.minecraft.SharedConstants;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.item.ItemStack;
@@ -35,6 +36,7 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
+import xyz.nucleoid.packettweaker.PacketContext;
 import xyz.nucleoid.stimuli.EventInvokers;
 import xyz.nucleoid.stimuli.Stimuli;
 
@@ -82,9 +84,11 @@ public class IrritaterEntity extends Entity implements PolymerEntity {
 
 		this.head.setTranslation(HEAD_OFFSET);
 		this.head.setInterpolationDuration(0);
+		this.head.setSendPositionUpdates(false);
 
 		this.interaction.setWidth(this.getWidth());
 		this.interaction.setHeight(this.getHeight());
+		this.interaction.setSendPositionUpdates(false);
 
 		VirtualEntityUtils.addVirtualPassenger(this, this.head.getEntityId(), this.interaction.getEntityId());
 
@@ -182,6 +186,11 @@ public class IrritaterEntity extends Entity implements PolymerEntity {
 	}
 
 	@Override
+	public boolean damage(ServerWorld world, DamageSource source, float amount) {
+		return false;
+	}
+
+	@Override
 	public void remove(RemovalReason reason) {
 		super.remove(reason);
 
@@ -190,7 +199,7 @@ public class IrritaterEntity extends Entity implements PolymerEntity {
 	}
 
 	@Override
-	protected void initDataTracker() {
+	protected void initDataTracker(DataTracker.Builder builder) {
 		return;
 	}
 
@@ -214,7 +223,7 @@ public class IrritaterEntity extends Entity implements PolymerEntity {
 	}
 
 	@Override
-	public EntityType<?> getPolymerEntityType(ServerPlayerEntity player) {
+	public EntityType<?> getPolymerEntityType(PacketContext context) {
 		return EntityType.ARMOR_STAND;
 	}
 

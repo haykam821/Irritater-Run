@@ -1,6 +1,10 @@
 package io.github.haykam821.irritaterrun.game;
 
+import java.util.List;
+
 import io.github.haykam821.irritaterrun.game.phase.IrritaterRunActivePhase;
+import net.minecraft.item.ItemStack;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -82,10 +86,13 @@ public class PlayerEntry {
 		// Inventory
 		player.getInventory().clear();
 		if (this.irritatered) {
-			this.player.getInventory().armor.set(3, this.phase.getArmorSet().getHelmet());
-			this.player.getInventory().armor.set(2, this.phase.getArmorSet().getChestplate());
-			this.player.getInventory().armor.set(1, this.phase.getArmorSet().getLeggings());
-			this.player.getInventory().armor.set(0, this.phase.getArmorSet().getBoots());
+			List<ItemStack> armor = this.player.getInventory().armor;
+			RegistryWrapper.WrapperLookup registries = this.player.getRegistryManager();
+
+			armor.set(3, this.phase.getArmorSet().getHelmet(registries));
+			armor.set(2, this.phase.getArmorSet().getChestplate(registries));
+			armor.set(1, this.phase.getArmorSet().getLeggings(registries));
+			armor.set(0, this.phase.getArmorSet().getBoots(registries));
 		}
 		this.updateInventory();
 	}
