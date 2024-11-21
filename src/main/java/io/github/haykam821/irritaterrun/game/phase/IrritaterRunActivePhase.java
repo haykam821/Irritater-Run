@@ -2,6 +2,7 @@ package io.github.haykam821.irritaterrun.game.phase;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.github.haykam821.irritaterrun.entity.IrritaterEntity;
@@ -26,20 +27,22 @@ import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
-import xyz.nucleoid.plasmid.game.GameActivity;
-import xyz.nucleoid.plasmid.game.GameCloseReason;
-import xyz.nucleoid.plasmid.game.GameSpace;
-import xyz.nucleoid.plasmid.game.common.GlobalWidgets;
-import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
-import xyz.nucleoid.plasmid.game.event.GamePlayerEvents;
-import xyz.nucleoid.plasmid.game.player.PlayerOffer;
-import xyz.nucleoid.plasmid.game.player.PlayerOfferResult;
-import xyz.nucleoid.plasmid.game.rule.GameRuleType;
+import xyz.nucleoid.plasmid.api.game.GameActivity;
+import xyz.nucleoid.plasmid.api.game.GameCloseReason;
+import xyz.nucleoid.plasmid.api.game.GameSpace;
+import xyz.nucleoid.plasmid.api.game.common.GlobalWidgets;
+import xyz.nucleoid.plasmid.api.game.event.GameActivityEvents;
+import xyz.nucleoid.plasmid.api.game.event.GamePlayerEvents;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptor;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptorResult;
+import xyz.nucleoid.plasmid.api.game.player.JoinOffer;
+import xyz.nucleoid.plasmid.api.game.rule.GameRuleType;
+import xyz.nucleoid.stimuli.event.EventResult;
 import xyz.nucleoid.stimuli.event.player.PlayerAttackEntityEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDamageEvent;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
-public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Enable, GameActivityEvents.Tick, IrritaterCatchEntityEvent, IrritaterSelectTargetEvent, GamePlayerEvents.Offer, PlayerDamageEvent, PlayerDeathEvent, GamePlayerEvents.Remove {
+public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameActivityEvents.Enable, GameActivityEvents.Tick, IrritaterCatchEntityEvent, IrritaterSelectTargetEvent, GamePlayerEvents.Accept, PlayerDamageEvent, PlayerDeathEvent, GamePlayerEvents.Remove {
 	private final ServerWorld world;
 	private final GameSpace gameSpace;
 	private final IrritaterRunMap map;
@@ -58,7 +61,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 		this.gameSpace = gameSpace;
 		this.map = map;
 		this.config = config;
-		this.players = gameSpace.getPlayers().stream().map(player -> {
+		this.players = gameSpace.getPlayers().participants().stream().map(player -> {
 			return new PlayerEntry(player, this);
 		}).collect(Collectors.toList());
 		this.timerBar = new IrritaterRunTimerBar(widgets);
@@ -88,7 +91,8 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 			activity.listen(GameActivityEvents.TICK, phase);
 			activity.listen(IrritaterCatchEntityEvent.EVENT, phase);
 			activity.listen(IrritaterSelectTargetEvent.EVENT, phase);
-			activity.listen(GamePlayerEvents.OFFER, phase);
+			activity.listen(GamePlayerEvents.ACCEPT, phase);
+			activity.listen(GamePlayerEvents.OFFER, JoinOffer::acceptSpectators);
 			activity.listen(PlayerDamageEvent.EVENT, phase);
 			activity.listen(PlayerDeathEvent.EVENT, phase);
 			activity.listen(GamePlayerEvents.REMOVE, phase);
@@ -97,7 +101,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 
 	// Listeners
 	@Override
-	public ActionResult onAttackEntity(ServerPlayerEntity attacker, Hand hand, Entity attacked, EntityHitResult hitResult) {
+	public EventResult onAttackEntity(ServerPlayerEntity attacker, Hand hand, Entity attacked, EntityHitResult hitResult) {
 		if (!this.isGameEnding() && attacked instanceof ServerPlayerEntity) {
 			PlayerEntry attackedEntry = this.getEntryFromPlayer((ServerPlayerEntity) attacked);
 			if (attackedEntry != null) {
@@ -107,7 +111,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 				}
 			}
 		}
-		return ActionResult.FAIL;
+		return EventResult.DENY;
 	}
 
 	@Override
@@ -133,6 +137,11 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 			IrritaterRunActivePhase.spawn(this.world, spawnPos, yaw, entry.getPlayer());
 
 			index += 1;
+		}
+
+		for (ServerPlayerEntity player : this.gameSpace.getPlayers().spectators()) {
+			IrritaterRunActivePhase.spawnAtCenter(this.world, this.map, player);
+			this.setSpectator(player);
 		}
 	}
 
@@ -199,19 +208,19 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 	}
 
 	@Override
-	public PlayerOfferResult onOfferPlayer(PlayerOffer offer) {
-		return offer.accept(this.world, this.map.getSpawnPos()).and(() -> {
-			this.setSpectator(offer.player());
+	public JoinAcceptorResult onAcceptPlayers(JoinAcceptor acceptor) {
+		return acceptor.teleport(this.world, this.map.getSpawnPos()).thenRunForEach(player -> {
+			this.setSpectator(player);
 		});
 	}
 
 	@Override
-	public ActionResult onDamage(ServerPlayerEntity player, DamageSource source, float amount) {
-		return ActionResult.FAIL;
+	public EventResult onDamage(ServerPlayerEntity player, DamageSource source, float amount) {
+		return EventResult.DENY;
 	}
 
 	@Override
-	public ActionResult onDeath(ServerPlayerEntity player, DamageSource source) {
+	public EventResult onDeath(ServerPlayerEntity player, DamageSource source) {
 		PlayerEntry entry = this.getEntryFromPlayer(player);
 		if (entry == null || this.isGameEnding()) {
 			IrritaterRunActivePhase.spawnAtCenter(this.world, this.map, player);
@@ -219,7 +228,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 			this.eliminate(entry, true);
 			this.setRandomIrritatered();
 		}
-		return ActionResult.FAIL;
+		return EventResult.DENY;
 	}
 
 	@Override
@@ -383,7 +392,7 @@ public class IrritaterRunActivePhase implements PlayerAttackEntityEvent, GameAct
 	}
 
 	public static void spawn(ServerWorld world, Vec3d pos, float yaw, ServerPlayerEntity player) {
-		player.teleport(world, pos.getX(), pos.getY(), pos.getZ(), yaw, 0);
+		player.teleport(world, pos.getX(), pos.getY(), pos.getZ(), Set.of(), yaw, 0, true);
 	}
 
 	public static void spawnAtCenter(ServerWorld world, IrritaterRunMap map, ServerPlayerEntity player) {

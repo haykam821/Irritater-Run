@@ -6,22 +6,23 @@ import io.github.haykam821.irritaterrun.game.map.IrritaterRunMapBuilder;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.ActionResult;
 import net.minecraft.world.GameMode;
 import xyz.nucleoid.fantasy.RuntimeWorldConfig;
-import xyz.nucleoid.plasmid.game.GameOpenContext;
-import xyz.nucleoid.plasmid.game.GameOpenProcedure;
-import xyz.nucleoid.plasmid.game.GameResult;
-import xyz.nucleoid.plasmid.game.GameSpace;
-import xyz.nucleoid.plasmid.game.common.GameWaitingLobby;
-import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
-import xyz.nucleoid.plasmid.game.event.GamePlayerEvents;
-import xyz.nucleoid.plasmid.game.player.PlayerOffer;
-import xyz.nucleoid.plasmid.game.player.PlayerOfferResult;
-import xyz.nucleoid.plasmid.game.rule.GameRuleType;
+import xyz.nucleoid.plasmid.api.game.GameOpenContext;
+import xyz.nucleoid.plasmid.api.game.GameOpenProcedure;
+import xyz.nucleoid.plasmid.api.game.GameResult;
+import xyz.nucleoid.plasmid.api.game.GameSpace;
+import xyz.nucleoid.plasmid.api.game.common.GameWaitingLobby;
+import xyz.nucleoid.plasmid.api.game.event.GameActivityEvents;
+import xyz.nucleoid.plasmid.api.game.event.GamePlayerEvents;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptor;
+import xyz.nucleoid.plasmid.api.game.player.JoinAcceptorResult;
+import xyz.nucleoid.plasmid.api.game.player.JoinOffer;
+import xyz.nucleoid.plasmid.api.game.rule.GameRuleType;
+import xyz.nucleoid.stimuli.event.EventResult;
 import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
 
-public class IrritaterRunWaitingPhase implements PlayerDeathEvent, GamePlayerEvents.Offer, GameActivityEvents.RequestStart {
+public class IrritaterRunWaitingPhase implements PlayerDeathEvent, GamePlayerEvents.Accept, GameActivityEvents.RequestStart {
 	private final GameSpace gameSpace;
 	private final ServerWorld world;
 	private final IrritaterRunMap map;
@@ -50,22 +51,23 @@ public class IrritaterRunWaitingPhase implements PlayerDeathEvent, GamePlayerEve
 
 			// Listeners
 			activity.listen(PlayerDeathEvent.EVENT, phase);
-			activity.listen(GamePlayerEvents.OFFER, phase);
+			activity.listen(GamePlayerEvents.ACCEPT, phase);
+			activity.listen(GamePlayerEvents.OFFER, JoinOffer::accept);
 			activity.listen(GameActivityEvents.REQUEST_START, phase);
 		});
 	}
 
 	// Listeners
 	@Override
-	public ActionResult onDeath(ServerPlayerEntity player, DamageSource source) {
+	public EventResult onDeath(ServerPlayerEntity player, DamageSource source) {
 		IrritaterRunActivePhase.spawnAtCenter(this.world, this.map, player);
-		return ActionResult.FAIL;
+		return EventResult.DENY;
 	}
 
 	@Override
-	public PlayerOfferResult onOfferPlayer(PlayerOffer offer) {
-		return offer.accept(this.world, this.map.getSpawnPos()).and(() -> {
-			offer.player().changeGameMode(GameMode.ADVENTURE);
+	public JoinAcceptorResult onAcceptPlayers(JoinAcceptor acceptor) {
+		return acceptor.teleport(this.world, this.map.getSpawnPos()).thenRunForEach(player -> {
+			player.changeGameMode(GameMode.ADVENTURE);
 		});
 	}
 
